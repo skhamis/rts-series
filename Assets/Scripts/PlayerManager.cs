@@ -5,7 +5,7 @@ using UnityEngine;
 public class PlayerManager : MonoBehaviour {
 
     RaycastHit hit;
-    List<Transform> selectedUnits = new List<Transform>();
+    List<UnitController> selectedUnits = new List<UnitController>();
     bool isDragging = false;
     Vector3 mousePositon;
 
@@ -18,7 +18,6 @@ public class PlayerManager : MonoBehaviour {
             ScreenHelper.DrawScreenRect(rect, new Color(0.8f, 0.8f, 0.95f, 0.1f));
             ScreenHelper.DrawScreenRectBorder(rect, 1, Color.blue);
         }
-        
         
     }
 
@@ -38,7 +37,7 @@ public class PlayerManager : MonoBehaviour {
                 //Debug.Log(hit.transform.tag);
                 if (hit.transform.CompareTag("PlayerUnit"))
                 {
-                    SelectUnit(hit.transform, Input.GetKey(KeyCode.LeftShift));
+                    SelectUnit(hit.transform.GetComponent<UnitController>(), Input.GetKey(KeyCode.LeftShift));
                 }
                 else
                 {
@@ -53,11 +52,11 @@ public class PlayerManager : MonoBehaviour {
             if (isDragging)
             {
                 DeselectUnits();
-                foreach (var selectableObject in FindObjectsOfType<BoxCollider>())
+                foreach (var selectableObject in FindObjectsOfType<PlayerUnitController>())
                 {
                     if (IsWithinSelectionBounds(selectableObject.transform))
                     {
-                        SelectUnit(selectableObject.transform, true);
+                        SelectUnit(selectableObject.gameObject.GetComponent<UnitController>(), true);
                     }
                 }
 
@@ -66,23 +65,49 @@ public class PlayerManager : MonoBehaviour {
             
         }
 
+        if(Input.GetMouseButtonDown(1) && selectedUnits.Count > 0)
+        {
+            var camRay = Camera.main.ScreenPointToRay(Input.mousePosition);
+            //Shoot that ray and get the hit data
+            if (Physics.Raycast(camRay, out hit))
+            {
+                //Do something with that data 
+                //Debug.Log(hit.transform.tag);
+                if (hit.transform.CompareTag("Ground"))
+                {
+                    foreach (var selectableObj in selectedUnits)
+                    {
+                        selectableObj.MoveUnit(hit.point);
+                    }
+                }
+                else if (hit.transform.CompareTag("EnemyUnit"))
+                {
+                    foreach (var selectableObj in selectedUnits)
+                    {
+                        selectableObj.SetNewTarget(hit.transform);
+                    }
+                }
+            }
+        }
+
     }
 
-    private void SelectUnit(Transform unit, bool isMultiSelect = false)
+    private void SelectUnit(UnitController unit, bool isMultiSelect = false)
     {
         if(!isMultiSelect)
         {
             DeselectUnits();
         }
         selectedUnits.Add(unit);
-        unit.Find("Highlight").gameObject.SetActive(true);
+        unit.SetSelected(true);
     }
 
     private void DeselectUnits()
     {
         for(int i = 0; i < selectedUnits.Count; i++)
         {
-            selectedUnits[i].Find("Highlight").gameObject.SetActive(false);
+            // selectedUnits[i].Find("Highlight").gameObject.SetActive(false);
+            selectedUnits[i].SetSelected(false);
         }
         selectedUnits.Clear();
     }
